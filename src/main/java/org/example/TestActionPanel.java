@@ -1,6 +1,9 @@
 package org.example;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -13,57 +16,60 @@ public class TestActionPanel extends JPanel {
     private JButton collapseExpandButton;
     private boolean isCollapsed;
     private JsonCreatorApp app;
-
-    private Map<String, JTextField> dynamicFields; // Stores dynamic action_fields inputs
+    private Map<String, JComponent> dynamicFields;
 
     public TestActionPanel(JsonCreatorApp app) {
         this.app = app;
-        this.isCollapsed = false; // Initially expanded
-
-        setLayout(new BorderLayout());
+        this.isCollapsed = false;
+        setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createTitledBorder("Action"));
+        setBackground(new Color(240, 240, 240));
 
-        // Initialize components
-        JPanel mainPanel = new JPanel(new GridLayout(3, 2, 5, 5));
+        JPanel mainPanel = createMainPanel();
+        add(mainPanel, BorderLayout.NORTH);
 
-        // Action Type Dropdown
-        mainPanel.add(new JLabel("Action Type:"));
-        actionTypeComboBox = new JComboBox<>(new String[]{"UI", "API"});
-        mainPanel.add(actionTypeComboBox);
+        actionFieldsPanel = new JPanel(new GridLayout(0, 2, 10, 5));
+        actionFieldsPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
+        add(actionFieldsPanel, BorderLayout.CENTER);
 
-        // Action Name Dropdown
-        mainPanel.add(new JLabel("Action Name:"));
-        actionNameComboBox = new JComboBox<>(new String[]{"Open Browser", "Navigate", "Click", "Input"});
-        mainPanel.add(actionNameComboBox);
-
-        // Panel for dynamic action_fields
-        actionFieldsPanel = new JPanel();
-        actionFieldsPanel.setLayout(new GridLayout(3, 2, 5, 5));
-
-        // Initialize dynamic fields map
-        dynamicFields = new HashMap<>();
-
-        // Add listeners to update fields based on selected action type and name
-        actionTypeComboBox.addActionListener(e -> updateActionFields());
-        actionNameComboBox.addActionListener(e -> updateActionFields());
-
-        // Add main panel and dynamic fields panel
-        JPanel contentPanel = new JPanel(new BorderLayout());
-        contentPanel.add(mainPanel, BorderLayout.NORTH);
-        contentPanel.add(actionFieldsPanel, BorderLayout.CENTER);
-
-        add(contentPanel, BorderLayout.CENTER);
-
-        // Collapse/Expand button
         collapseExpandButton = new JButton("Collapse");
         collapseExpandButton.addActionListener(e -> toggleCollapseExpand());
         add(collapseExpandButton, BorderLayout.SOUTH);
 
-        // Initialize fields based on default selections
+        dynamicFields = new HashMap<>();
         updateActionFields();
     }
 
-    // Method to update action fields based on selected action type and action name
+    private JPanel createMainPanel() {
+        JPanel mainPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(5, 5, 5, 5);
+
+        // Action Type Label and Dropdown
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        mainPanel.add(new JLabel("Action Type:"), gbc);
+
+        actionTypeComboBox = new JComboBox<>(new String[]{"UI", "API"});
+        gbc.gridx = 1;
+        mainPanel.add(actionTypeComboBox, gbc);
+
+        // Action Name Label and Dropdown
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        mainPanel.add(new JLabel("Action Name:"), gbc);
+
+        actionNameComboBox = new JComboBox<>(new String[]{"Open Browser", "Navigate", "Click", "Input"});
+        gbc.gridx = 1;
+        mainPanel.add(actionNameComboBox, gbc);
+
+        actionTypeComboBox.addActionListener(e -> updateActionFields());
+        actionNameComboBox.addActionListener(e -> updateActionFields());
+
+        return mainPanel;
+    }
+
     private void updateActionFields() {
         actionFieldsPanel.removeAll();
         dynamicFields.clear();
@@ -72,26 +78,47 @@ public class TestActionPanel extends JPanel {
         String actionName = (String) actionNameComboBox.getSelectedItem();
 
         if ("UI".equals(actionType) && "Open Browser".equals(actionName)) {
-            addDynamicField("browser_name", "Browser Name");
-            addDynamicField("sso_login", "SSO Login");
-            addDynamicField("browser_zoom", "Browser Zoom");
+            addDynamicField("browser_name", "Browser Name", new JComboBox<>(new String[]{"Chrome", "Edge"}));
+            addDynamicField("sso_login", "SSO Login", new JComboBox<>(new String[]{"Yes", "No"}));
+
+            // Browser Zoom Slider in a nested panel
+            JLabel zoomLabel = new JLabel("Browser Zoom: 100%");
+            JSlider browserZoomSlider = new JSlider(50, 200, 100);
+            browserZoomSlider.setMajorTickSpacing(10);
+            browserZoomSlider.setPaintTicks(true);
+            browserZoomSlider.setBackground(new Color(245, 245, 245));
+
+            browserZoomSlider.addChangeListener(new ChangeListener() {
+                public void stateChanged(ChangeEvent e) {
+                    int zoomValue = browserZoomSlider.getValue();
+                    zoomLabel.setText("Browser Zoom: " + zoomValue + "%");
+                }
+            });
+
+            JPanel sliderPanel = new JPanel(new BorderLayout(5, 5));
+            sliderPanel.add(browserZoomSlider, BorderLayout.CENTER);
+            sliderPanel.add(zoomLabel, BorderLayout.SOUTH);
+            actionFieldsPanel.add(new JLabel("Browser Zoom:"));
+            actionFieldsPanel.add(sliderPanel);
+
+            dynamicFields.put("browser_zoom", browserZoomSlider);
 
         } else if ("UI".equals(actionType) && "Navigate".equals(actionName)) {
-            addDynamicField("url", "URL");
+            addDynamicField("url", "URL", new JTextField());
 
         } else if ("UI".equals(actionType) && "Click".equals(actionName)) {
-            addDynamicField("object_name", "Object Name");
+            addDynamicField("object_name", "Object Name", new JTextField());
 
         } else if ("UI".equals(actionType) && "Input".equals(actionName)) {
-            addDynamicField("field_name", "Field Name");
-            addDynamicField("input_value", "Input Value");
+            addDynamicField("field_name", "Field Name", new JTextField());
+            addDynamicField("input_value", "Input Value", new JTextField());
 
         } else if ("API".equals(actionType)) {
             if ("Open Browser".equals(actionName)) {
-                addDynamicField("endpoint", "API Endpoint");
+                addDynamicField("endpoint", "API Endpoint", new JTextField());
             } else if ("Navigate".equals(actionName)) {
-                addDynamicField("resource", "Resource");
-                addDynamicField("headers", "Headers");
+                addDynamicField("resource", "Resource", new JTextField());
+                addDynamicField("headers", "Headers", new JTextField());
             }
         }
 
@@ -99,13 +126,11 @@ public class TestActionPanel extends JPanel {
         actionFieldsPanel.repaint();
     }
 
-    // Utility method to add a dynamic field
-    private void addDynamicField(String key, String label) {
+    private void addDynamicField(String key, String label, JComponent inputComponent) {
         JLabel fieldLabel = new JLabel(label + ":");
-        JTextField fieldInput = new JTextField();
         actionFieldsPanel.add(fieldLabel);
-        actionFieldsPanel.add(fieldInput);
-        dynamicFields.put(key, fieldInput); // Store input field in map with its key
+        actionFieldsPanel.add(inputComponent);
+        dynamicFields.put(key, inputComponent);
     }
 
     private void toggleCollapseExpand() {
@@ -113,32 +138,15 @@ public class TestActionPanel extends JPanel {
         removeAll();
 
         if (isCollapsed) {
-            // Collapse mode: show only action name in the title and expand button
             String actionName = actionNameComboBox.getSelectedItem() == null ? "Unnamed Action" : actionNameComboBox.getSelectedItem().toString();
             setBorder(BorderFactory.createTitledBorder("Action: " + actionName));
-
             collapseExpandButton.setText("Expand");
-            add(collapseExpandButton, BorderLayout.SOUTH); // Only show collapse/expand button in collapsed state
-        } else {
-            // Expanded mode: show all fields and buttons
-            setBorder(BorderFactory.createTitledBorder("Action"));
-
-            JPanel mainPanel = new JPanel(new GridLayout(3, 2, 5, 5));
-            mainPanel.add(new JLabel("Action Type:"));
-            mainPanel.add(actionTypeComboBox);
-
-            mainPanel.add(new JLabel("Action Name:"));
-            mainPanel.add(actionNameComboBox);
-
-            actionFieldsPanel.setVisible(true); // Ensure actionFieldsPanel is visible when expanded
-
-            JPanel contentPanel = new JPanel(new BorderLayout());
-            contentPanel.add(mainPanel, BorderLayout.NORTH);
-            contentPanel.add(actionFieldsPanel, BorderLayout.CENTER);
-
-            add(contentPanel, BorderLayout.CENTER);
             add(collapseExpandButton, BorderLayout.SOUTH);
-
+        } else {
+            setBorder(BorderFactory.createTitledBorder("Action"));
+            add(createMainPanel(), BorderLayout.NORTH);
+            add(actionFieldsPanel, BorderLayout.CENTER);
+            add(collapseExpandButton, BorderLayout.SOUTH);
             collapseExpandButton.setText("Collapse");
         }
         revalidate();
@@ -151,8 +159,14 @@ public class TestActionPanel extends JPanel {
         actionJson.put("action_name", ((String) actionNameComboBox.getSelectedItem()).toLowerCase().replace(" ", "_"));
 
         JSONObject actionFieldsJson = new JSONObject();
-        for (Map.Entry<String, JTextField> entry : dynamicFields.entrySet()) {
-            actionFieldsJson.put(entry.getKey(), entry.getValue().getText());
+        for (Map.Entry<String, JComponent> entry : dynamicFields.entrySet()) {
+            if (entry.getValue() instanceof JTextField) {
+                actionFieldsJson.put(entry.getKey(), ((JTextField) entry.getValue()).getText());
+            } else if (entry.getValue() instanceof JComboBox) {
+                actionFieldsJson.put(entry.getKey(), ((JComboBox<?>) entry.getValue()).getSelectedItem());
+            } else if (entry.getValue() instanceof JSlider) {
+                actionFieldsJson.put(entry.getKey(), ((JSlider) entry.getValue()).getValue() + "%");
+            }
         }
         actionJson.put("action_fields", actionFieldsJson);
 
